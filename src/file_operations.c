@@ -104,4 +104,24 @@ int myRead(file* f, void* buffer, int nBytes) {
 
     return bytesRead; // Return the number of bytes read
 }
-// 实现mySeek函数：改变文件的当前读/写位置。
+
+// Function to change the current read/write position in a file
+void mySeek(file* f, int offset, int base) {
+    // Update the file position based on the base
+    if(base == SEEK_SET) {
+        f->position = offset;
+    } else if(base == SEEK_CUR) {
+        f->position += offset;
+    } else if(base == SEEK_END) {
+        f->position = f->size + offset;
+    }
+
+    // Ensure the position is not set beyond the file size
+    if(f->position > f->size) {
+        f->position = f->size;
+    }
+    // Ensure the position does not go below zero
+    if(f->position < 0) {
+        f->position = 0;
+    }
+}
