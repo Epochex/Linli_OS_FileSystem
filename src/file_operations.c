@@ -58,6 +58,50 @@ file * myOpen(char* fileName) {
     }
 }
 
-// 实现myWrite和myRead函数：在虚拟分区中的文件上执行读写操作。
+int myWrite(file* f, void* buffer, int nBytes) {
+    // Open the partition
+    FILE *partition = fopen("partition.bin", "r+b");
+    if (partition == NULL) {
+        return -1; // Error opening partition
+    }
 
+    // Calculate the offset to seek to the start of the block
+    fseek(partition, f->blocks[f->position] * BLOCK_SIZE, SEEK_SET);
+
+    // Write data and update the file structure
+    int bytesWritten = fwrite(buffer, 1, nBytes, partition);
+    f->size += bytesWritten;
+    f->position += bytesWritten;
+
+    // Close the partition
+    fclose(partition);
+
+    return bytesWritten; // Return the number of bytes written
+}
+
+// Function to read data from a file in the virtual partition
+int myRead(file* f, void* buffer, int nBytes) {
+    // Open the partition
+    FILE *partition = fopen("partition.bin", "rb");
+    if (partition == NULL) {
+        return -1; // Error opening partition
+    }
+
+    // Check if we are trying to read more bytes than the file contains
+    if(nBytes > f->size - f->position) {
+        nBytes = f->size - f->position; // Read only up to the end of the file
+    }
+
+    // Calculate the offset to seek to the current read position
+    fseek(partition, f->blocks[f->position] * BLOCK_SIZE, SEEK_SET);
+
+    // Read data into the buffer
+    int bytesRead = fread(buffer, 1, nBytes, partition);
+    f->position += bytesRead; // Update the file's current position
+
+    // Close the partition
+    fclose(partition);
+
+    return bytesRead; // Return the number of bytes read
+}
 // 实现mySeek函数：改变文件的当前读/写位置。
