@@ -3,18 +3,49 @@
 #include <unistd.h> // 包含close、read、write和lseek函数
 #include <string.h> // 包含strcpy等字符串操作函数
 
+#include <fcntl.h>  // For open
+#include <unistd.h> // For close, write
+#include <string.h> // For strlen
+#include <stdlib.h> // For calloc
+
+#define MAX_FILES 100  // 假设我们的文件系统最多支持100个文件
+#define BLOCK_SIZE 1024  // 假设每个块的大小为1024字节
+#define META_DATA_BLOCKS 1  // 假设我们用一个块来存储元数据
+
 int myFormat(char *partitionName) {
     int fd = open(partitionName, O_WRONLY | O_CREAT | O_TRUNC, 0600);
     if (fd == -1) {
         return -1; // 文件打开失败
     }
 
-    const char *initData = "This is the virtual partition for my file system.";
-    write(fd, initData, strlen(initData));
+    // 初始化文件分配表
+    // 0 表示块空闲，非0表示块被占用（此处简化处理，实际应用可能需要更复杂的结构）
+    int *fileAllocationTable = (int *)calloc(MAX_FILES, sizeof(int));
+    if (fileAllocationTable == NULL) {
+        close(fd);
+        return -1; // 内存分配失败
+    }
+
+    // 写入文件分配表到分区文件的开头
+    write(fd, fileAllocationTable, MAX_FILES * sizeof(int));
+
+    // 为了简化，我们不使用所有的块来存储元数据，仅使用一个块
+    // 实际应用中，元数据区可能需要更多的空间
+    char *padding = (char *)calloc(BLOCK_SIZE - (MAX_FILES * sizeof(int)), sizeof(char));
+    if (padding == NULL) {
+        free(fileAllocationTable);
+        close(fd);
+        return -1; // 内存分配失败
+    }
+    write(fd, padding, BLOCK_SIZE - (MAX_FILES * sizeof(int)));
+
+    free(fileAllocationTable);
+    free(padding);
 
     close(fd);
     return 0; // 格式化成功
 }
+
 
 file *myOpen(char *fileName) {
     for (int i = 0; i < fileCount; i++) {

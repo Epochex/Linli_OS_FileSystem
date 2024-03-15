@@ -4,6 +4,7 @@
 #define MAX_FILES 100
 #define MAX_FILENAME_LENGTH 100
 #define MAX_BLOCKS 100  // 添加这行，定义磁盘块的最大数量
+#define BLOCK_SIZE 4096
 
 typedef struct {
     char fileName[MAX_FILENAME_LENGTH];
