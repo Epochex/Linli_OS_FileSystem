@@ -1,94 +1,133 @@
-// main.c
+#include "filesystem_structs.h"
+#include "filesystem_api.h"
 #include <stdio.h>
-#include "file_operations.h"
+#include <stdlib.h>
+#include <string.h>
+
+void printMenu() {
+    printf("\nFile System Simulator\n");
+    printf("=====================\n");
+    printf("1. Format FileSystem\n");
+    printf("2. Create/Open File\n");
+    printf("3. Write to File\n");
+    printf("4. Read from File\n");
+    printf("5. Exit\n");
+    printf("Select an option: ");
+}
+
+void pauseAndClearScreen() {
+    printf("\nPress Enter to continue...");
+    while (getchar() != '\n'); // Wait for Enter key to be pressed
+    getchar(); // Consume the Enter key
+
+    // Use 'cls' on Windows, 'clear' on Unix/Linux
+    #ifdef _WIN32
+    system("cls");
+    #else
+    system("clear");
+    #endif
+}
 
 int main() {
-    int choice;
-    char partitionName[] = "partition.bin";
-    char fileName[MAX_FILENAME_LENGTH];
-    file* openFile = NULL;
-    int bytesRead, bytesWritten;
-    char buffer[1024]; // 用于读写的缓冲区
-    int position, offset, base;
+    const char* partitionName = "filesystem.img";
+    file* myFile = NULL;
+    char fileName[256];
+    char inputBuffer[1024];
+    char data[1024];
+    int option = 0;
+    
+    initFileSystem(partitionName);
 
-    // 测试 myFormat 函数
-    printf("Formatting partition...\n");
-    if (myFormat(partitionName) == 0) {
-        printf("Partition formatted successfully.\n");
-    } else {
-        printf("Error formatting partition.\n");
-        return 1; // 如果格式化失败，则退出程序
-    }
-
-    do {
-        printf("\nFile System Menu:\n");
-        printf("1. Open/Create File\n");
-        printf("2. Write to File\n");
-        printf("3. Read from File\n");
-        printf("4. Seek File\n");
-        printf("5. Exit\n");
-        printf("Enter your choice: ");
-        scanf("%d", &choice);
-
-        switch (choice) {
-            case 1: // Open/Create File
-                printf("Enter filename to open/create: ");
-                scanf("%s", fileName);
-                openFile = myOpen(fileName);
-                if (openFile) {
-                    printf("File '%s' opened/created successfully.\n", fileName);
-                } else {
-                    printf("Failed to open/create file '%s'.\n", fileName);
-                }
-                break;
-            case 2: // Write to File
-                if (openFile) {
-                    printf("Enter string to write to file: ");
-                    scanf("%s", buffer);
-                    bytesWritten = myWrite(openFile, buffer, strlen(buffer));
-                    if (bytesWritten >= 0) {
-                        printf("Wrote %d bytes to file.\n", bytesWritten);
-                    } else {
-                        printf("Failed to write to file.\n");
-                    }
-                } else {
-                    printf("No file is open. Please open a file first.\n");
-                }
-                break;
-            case 3: // Read from File
-                if (openFile) {
-                    printf("Enter number of bytes to read: ");
-                    scanf("%d", &bytesRead);
-                    bytesRead = myRead(openFile, buffer, bytesRead);
-                    if (bytesRead >= 0) {
-                        buffer[bytesRead] = '\0'; // 确保字符串正确结束
-                        printf("Read %d bytes: %s\n", bytesRead, buffer);
-                    } else {
-                        printf("Failed to read from file.\n");
-                    }
-                } else {
-                    printf("No file is open. Please open a file first.\n");
-                }
-                break;
-            case 4: // Seek File
-                if (openFile) {
-                    printf("Enter offset for seek: ");
-                    scanf("%d", &offset);
-                    printf("Enter seek base (0 for beginning, 1 for current, 2 for end): ");
-                    scanf("%d", &base);
-                    mySeek(openFile, offset, base);
-                    printf("Seek operation completed.\n");
-                } else {
-                    printf("No file is open. Please open a file first.\n");
-                }
-                break;
-            case 5: // Exit
-                printf("Exiting program.\n");
-                break;
-            default:
-                printf("Invalid choice. Please try again.\n");
+    while (1) {
+        printMenu();
+        if (fgets(inputBuffer, sizeof(inputBuffer), stdin) == NULL) continue;
+        if (sscanf(inputBuffer, "%d", &option) != 1) {
+            printf("Invalid input, please try again.\n");
+            pauseAndClearScreen();
+            continue;
         }
-    } while (choice != 5);
+        
+        switch (option) {
+            case 1:
+                if (myFormat(partitionName) != 0) {
+                    fprintf(stderr, "Failed to format partition.\n");
+                } else {
+                    printf("Partition formatted successfully.\n");
+                }
+                break;
+            case 2:
+                printf("Enter file name: ");
+                if (fgets(fileName, sizeof(fileName), stdin) == NULL) {
+                    printf("Error reading file name.\n");
+                    continue;
+                }
+                // Remove the newline at the end of the input
+                fileName[strcspn(fileName, "\n")] = 0;
 
+                myFile = myOpen(partitionName, fileName);
+                if (myFile == NULL) {
+                    fprintf(stderr, "Failed to open file: %s\n", fileName);
+                } else {
+                    printf("File '%s' opened successfully.\n", fileName);
+                }
+                break;
+            case 3:
+                if (myFile == NULL) {
+                    printf("No file is open.\n");
+                    break;
+                }
+                printf("Enter data to write: ");
+                if (fgets(data, sizeof(data), stdin) == NULL) {
+                    printf("Error reading input data.\n");
+                    continue;
+                }
+                // Remove the newline at the end of the input
+                data[strcspn(data, "\n")] = 0;
+
+                int dataSize = strlen(data) + 1; // +1 for null terminator
+                if (myWrite(myFile, (void*)data, dataSize, partitionName) < dataSize) {
+                    fprintf(stderr, "Failed to write data to file.\n");
+                } else {
+                    printf("Data written successfully.\n");
+                }
+                break;
+            case 4:
+                if (myFile == NULL) {
+                    printf("No file is open.\n");
+                    break;
+                }
+                char buffer[1024]; // Define the buffer array
+                mySeek(myFile, 0, SEEK_SET); // Move to the beginning of the file
+
+                int bytesRead = myRead(myFile, buffer, sizeof(buffer) - 1);
+                if (bytesRead < 0) {
+                    fprintf(stderr, "Failed to read data from file.\n");
+                } else {
+                    buffer[bytesRead] = '\0'; // Null-terminate the string
+                    printf("Read from file: %s\n", buffer);
+                }
+                break;
+
+                pauseAndClearScreen();
+                break;
+        
+
+            case 5:
+                printf("Exiting...\n");
+                if (myFile) {
+                    myClose(myFile); // Close the file if it's open
+                }
+                cleanupFileSystem(); // Perform any necessary cleanup
+                return 0;
+            default:
+                printf("Invalid option, please try again.\n");
+                pauseAndClearScreen();
+        }
+    }
     return 0;
 }
+
+
+
+
+
