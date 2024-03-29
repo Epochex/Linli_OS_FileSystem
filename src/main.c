@@ -11,7 +11,9 @@ void printMenu() {
     printf("2. Create/Open File\n");
     printf("3. Write to File\n");
     printf("4. Read from File\n");
-    printf("5. Exit\n");
+    printf("5. Find File/Directory\n");
+    printf("6. Print File Tree\n");
+    printf("7. Exit\n");    
     printf("Select an option: ");
 }
 
@@ -111,17 +113,44 @@ int main() {
                 pauseAndClearScreen();
                 break;
         
-
             case 5:
+                printf("Enter the path of the file/directory to find: ");
+                if (fgets(inputBuffer, sizeof(inputBuffer), stdin) == NULL) {
+                    printf("Error reading path.\n");
+                    continue;
+                }
+                // Remove the newline at the end of the input
+                inputBuffer[strcspn(inputBuffer, "\n")] = 0;
+
+                DirectoryEntry* foundEntry = findEntry(fs.root, inputBuffer);
+                if (foundEntry == NULL) {
+                    printf("File/Directory not found.\n");
+                } else {
+                    printf("File/Directory '%s' found.\n", foundEntry->entryName);
+                    // 如果是文件，可以显示更多信息
+                    if (foundEntry->fileMeta != NULL) {
+                        printf("File size: %u bytes\n", foundEntry->fileMeta->fileSize);
+                    }
+                }
+                break;
+
+            case 6:
+                printf("Directory Tree:\n");
+                printDirectoryTree(fs.root, 0);  // 从根目录开始，深度为0
+                break;
+
+            case 7:
                 printf("Exiting...\n");
                 if (myFile) {
                     myClose(myFile); // Close the file if it's open
                 }
                 cleanupFileSystem(); // Perform any necessary cleanup
                 return 0;
+
             default:
                 printf("Invalid option, please try again.\n");
                 pauseAndClearScreen();
+            
         }
     }
     return 0;

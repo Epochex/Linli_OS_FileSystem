@@ -14,5 +14,8 @@ void initFileSystem(const char* partitionName);
 void myClose(file* f);
 void deleteEntry(DirectoryEntry* entry);
 void cleanupFileSystem();
+DirectoryEntry* findEntry(DirectoryEntry* root, const char* path);
+void printDirectoryTree(const DirectoryEntry* entry, int depth);
+
 
 #endif // FILESYSTEM_API_H

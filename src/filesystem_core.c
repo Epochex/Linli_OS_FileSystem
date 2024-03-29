@@ -440,3 +440,27 @@ void cleanupFileSystem() {
     memset(fs.meta.block_bitmap, 0, sizeof(fs.meta.block_bitmap));
 
 }
+
+void printDirectoryTree(const DirectoryEntry* entry, int depth) {
+    if (!entry) return;
+
+    // 为当前目录项创建缩进字符串
+    char indent[256] = {0};
+    for (int i = 0; i < depth; ++i) {
+        strcat(indent, "  ");  // 每一级深度增加两个空格的缩进
+    }
+
+    // 打印当前目录项的名称
+    printf("%s%s\n", indent, entry->entryName);
+
+    // 如果当前目录项是一个文件，则直接返回
+    if (entry->fileMeta) return;
+
+    // 如果当前目录项是一个目录，则递归地打印其子目录项
+    DirectoryEntry* child = entry->child;
+    while (child) {
+        printDirectoryTree(child, depth + 1);  // 增加深度参数以增加缩进
+        child = child->next;
+    }
+}
+
